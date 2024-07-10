@@ -39,12 +39,12 @@ void effective_transpose(int *dst, int *src, int N) {
 
   int offset = i;
 
-  for (int i = offset; i <= N - 1; i++)
-    for (int j = 0; j < offset; j++)
+  for (i = offset; i <= N - 1; i++)
+    for (j = 0; j < offset; j++)
       dst[j * N + i] = src[i * N + j];
 
-  for (int i = 0; i <= N - 1; i++)
-    for (int j = offset; j <= N - 1; j++)
+  for (i = 0; i <= N - 1; i++)
+    for (j = offset; j <= N - 1; j++)
       dst[j * N + i] = src[i * N + j];
 }
 
