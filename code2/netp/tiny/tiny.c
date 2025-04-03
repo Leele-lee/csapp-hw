@@ -9,6 +9,7 @@
 #include "csapp.h"
 
 void doit(int fd);
+void echo(int connfd);
 void read_requesthdrs(rio_t *rp);
 int parse_uri(char *uri, char *filename, char *cgiargs);
 void serve_static(int fd, char *filename, int filesize);
@@ -37,11 +38,30 @@ int main(int argc, char **argv)
         Getnameinfo((SA *) &clientaddr, clientlen, hostname, MAXLINE, 
                     port, MAXLINE, 0);
         printf("Accepted connection from (%s, %s)\n", hostname, port);
-	doit(connfd);                                             //line:netp:tiny:doit
+	//doit(connfd);                                             //line:netp:tiny:doit
+    echo(connfd);
 	Close(connfd);                                            //line:netp:tiny:close
     }
 }
 /* $end tinymain */
+
+/* 
+ * echo - echos every request line and request header
+ */
+void echo(int fd) {
+    size_t n;
+    rio_t rio;
+    char buf[MAXLINE];
+
+    Rio_readinitb(&rio, fd);
+    while ((Rio_readlineb(&rio, buf, MAXLINE)) != 0) {
+        if (strcmp(buf, "\r\n")) {
+            printf("%s", buf);
+            break;
+        }
+    }
+    return;
+}
 
 /*
  * doit - handle one HTTP request/response transaction
