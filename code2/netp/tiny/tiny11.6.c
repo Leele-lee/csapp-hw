@@ -38,11 +38,53 @@ int main(int argc, char **argv)
         Getnameinfo((SA *) &clientaddr, clientlen, hostname, MAXLINE, 
                     port, MAXLINE, 0);
         printf("Accepted connection from (%s, %s)\n", hostname, port);
-	doit(connfd);                                             //line:netp:tiny:doit
+	//doit(connfd);                                             //line:netp:tiny:doit
+    echo(connfd);
 	Close(connfd);                                            //line:netp:tiny:close
     }
 }
 /* $end tinymain */
+
+/* 
+ * echo - echos every request line and request header
+ */
+void echo(int fd) {
+    size_t n;
+    rio_t rio;
+    char buf[MAXLINE];
+
+    Rio_readinitb(&rio, fd);
+    while ((Rio_readlineb(&rio, buf, MAXLINE)) != 0) {
+        //printf("%s", buf);
+        if (strcmp(buf, "\r\n") == 0) {
+            break;
+        } else {
+          printf("%s", buf);
+        }
+    }
+    return;
+}
+
+void echo2 (int fd) {
+    char buf[MAXLINE];
+    rio_t rio;  // Buffered I/O object
+    Rio_readinitb(&rio, fd);  // Initialize the buffered I/O object
+
+    // Read and echo the request line (first line)
+    Rio_readlineb(&rio, buf, MAXLINE);
+    printf("%s", buf);  // Print the request line
+
+    // Read and echo the request headers
+    while (1) {
+        Rio_readlineb(&rio, buf, MAXLINE);  // Read the next header line
+        printf("%s", buf);  // Print the header line
+
+        // Check if the current line is just "\r\n", which signals the end of headers
+        if (strcmp(buf, "\r\n") == 0) {
+            break;  // End of headers reached
+        }
+    }
+}
 
 /*
  * doit - handle one HTTP request/response transaction
