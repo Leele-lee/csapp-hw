@@ -1,7 +1,18 @@
+<!DOCTYPE html>
 <html>
-<head><title>test</title></head>
+<head>
+    <title>Adder Form</title>
+</head>
 <body> 
-<img align="middle" src="godzilla.gif">
-Dave O'Hallaron
+    <h1>Simple Adder Form</h1>
+    <form action="/cgi-bin/adder" method="GET">
+        <label for="num1">First number:</label>
+        <input type="text" name="num1" id="num1"><br><br>
+
+        <label for="num2">Second number:</label>
+        <input type="text" name="num2" id="num2"><br><br>
+
+        <input type="submit" value="Add">
+    </form>
 </body>
 </html>
