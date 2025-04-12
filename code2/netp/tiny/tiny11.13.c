@@ -17,6 +17,19 @@ void get_filetype(char *filename, char *filetype);
 void serve_dynamic(int fd, char *filename, char *cgiargs);
 void clienterror(int fd, char *cause, char *errnum,
                  char *shortmsg, char *longmsg);
+void Md_rio_writen(int fd, void *usrbuf, size_t n);
+                 
+void Md_rio_writen(int fd, void *usrbuf, size_t n) {
+    if (rio_writen(fd, usrbuf, n) != n) { 
+        if (errno == EPIPE) {
+            fprintf(stderr, "EPIPE error\n");
+            fflush(stderr);
+        }
+        fprintf(stderr, "Write failed: %s\n", strerror(errno));
+        fflush(stderr);
+        unix_error("client side has ended connection\n");
+    }
+}
 
 int main(int argc, char **argv)
 {
@@ -30,6 +43,11 @@ int main(int argc, char **argv)
     {
         fprintf(stderr, "usage: %s <port>\n", argv[0]);
         exit(1);
+    }
+
+    /* Ignore SIGPIPE signal to prevent server termination when writing to a closed socket */
+    if (Signal(SIGPIPE, SIG_IGN) == SIG_ERR) {
+        unix_error("mask SIGPIPE signal error");
     }
 
     listenfd = Open_listenfd(argv[1]);
@@ -170,19 +188,19 @@ void serve_static(int fd, char *filename, int filesize)
     /* Send response headers to client */
     get_filetype(filename, filetype);    // line:netp:servestatic:getfiletype
     sprintf(buf, "HTTP/1.0 200 OK\r\n"); // line:netp:servestatic:beginserve
-    Rio_writen(fd, buf, strlen(buf));
+    Md_rio_writen(fd, buf, strlen(buf));
     sprintf(buf, "Server: Tiny Web Server\r\n");
-    Rio_writen(fd, buf, strlen(buf));
+    Md_rio_writen(fd, buf, strlen(buf));
     sprintf(buf, "Content-length: %d\r\n", filesize);
-    Rio_writen(fd, buf, strlen(buf));
+    Md_rio_writen(fd, buf, strlen(buf));
     sprintf(buf, "Content-type: %s\r\n\r\n", filetype);
-    Rio_writen(fd, buf, strlen(buf)); // line:netp:servestatic:endserve
+    Md_rio_writen(fd, buf, strlen(buf)); // line:netp:servestatic:endserve
 
     /* Send response body to client */
     srcfd = Open(filename, O_RDONLY, 0);                        // line:netp:servestatic:open
     srcp = Mmap(0, filesize, PROT_READ, MAP_PRIVATE, srcfd, 0); // line:netp:servestatic:mmap
     Close(srcfd);                                               // line:netp:servestatic:close
-    Rio_writen(fd, srcp, filesize);                             // line:netp:servestatic:write
+    Md_rio_writen(fd, srcp, filesize);                             // line:netp:servestatic:write
     Munmap(srcp, filesize);                                     // line:netp:servestatic:munmap
 }
 
@@ -212,14 +230,21 @@ void serve_dynamic(int fd, char *filename, char *cgiargs)
 {
     char buf[MAXLINE], *emptylist[] = {NULL};
 
+    Sleep(5);
     /* Return first part of HTTP response */
     sprintf(buf, "HTTP/1.0 200 OK\r\n");
-    Rio_writen(fd, buf, strlen(buf));
+    Md_rio_writen(fd, buf, strlen(buf));
     sprintf(buf, "Server: Tiny Web Server\r\n");
-    Rio_writen(fd, buf, strlen(buf));
+    Md_rio_writen(fd, buf, strlen(buf));
+
+    //Sleep(5);
 
     if (Fork() == 0)
     { /* Child */ // line:netp:servedynamic:fork
+
+        if (Signal(SIGPIPE, SIG_IGN) == SIG_ERR) {
+            unix_error("mask SIGPIPE signal error");
+        }
         /* Real server would set all CGI vars here */
         setenv("QUERY_STRING", cgiargs, 1);                         // line:netp:servedynamic:setenv
         Dup2(fd, STDOUT_FILENO); /* Redirect stdout to client */    // line:netp:servedynamic:dup2
@@ -240,22 +265,22 @@ void clienterror(int fd, char *cause, char *errnum,
 
     /* Print the HTTP response headers */
     sprintf(buf, "HTTP/1.0 %s %s\r\n", errnum, shortmsg);
-    Rio_writen(fd, buf, strlen(buf));
+    Md_rio_writen(fd, buf, strlen(buf));
     sprintf(buf, "Content-type: text/html\r\n\r\n");
-    Rio_writen(fd, buf, strlen(buf));
+    Md_rio_writen(fd, buf, strlen(buf));
 
     /* Print the HTTP response body */
     sprintf(buf, "<html><title>Tiny Error</title>");
-    Rio_writen(fd, buf, strlen(buf));
+    Md_rio_writen(fd, buf, strlen(buf));
     sprintf(buf, "<body bgcolor="
                  "ffffff"
                  ">\r\n");
-    Rio_writen(fd, buf, strlen(buf));
+    Md_rio_writen(fd, buf, strlen(buf));
     sprintf(buf, "%s: %s\r\n", errnum, shortmsg);
-    Rio_writen(fd, buf, strlen(buf));
+    Md_rio_writen(fd, buf, strlen(buf));
     sprintf(buf, "<p>%s: %s\r\n", longmsg, cause);
-    Rio_writen(fd, buf, strlen(buf));
+    Md_rio_writen(fd, buf, strlen(buf));
     sprintf(buf, "<hr><em>The Tiny Web server</em>\r\n");
-    Rio_writen(fd, buf, strlen(buf));
+    Md_rio_writen(fd, buf, strlen(buf));
 }
 /* $end clienterror */
