@@ -35,3 +35,15 @@ int sbuf_remove(sbuf_t *sp) {
     V(&sp->slots);
     return item;
 }
+
+/* When rear == front ⇒ buffer is empty */
+int sbuf_empty(sbuf_t *sp) {
+    if (sp->front == sp->rear)
+        return 1;
+}
+
+/* When rear + 1 % n == front ⇒ buffer is full */
+int sbuf_full(sbuf_t *sp) {
+    if (((sp->rear+1) % (sp->n)) == sp->front)
+        return 1;
+}
