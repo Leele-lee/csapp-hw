@@ -2,43 +2,17 @@
  * tiny.c - A simple, iterative HTTP/1.0 Web server that uses the
  *     GET method to serve static and dynamic content.
  */
-#include "csapp.h"
+#include "../csapp.h"
+#include "tiny.h"
 
-void doit(int fd);
+/*void doit(int fd);
 void read_requesthdrs(rio_t *rp);
 int parse_uri(char *uri, char *filename, char *cgiargs);
 void serve_static(int fd, char *filename, int filesize);
 void get_filetype(char *filename, char *filetype);
 void serve_dynamic(int fd, char *filename, char *cgiargs);
 void clienterror(int fd, char *cause, char *errnum,
-    char *shortmsg, char *longmsg);
-
-int main(int argc, char **argv)
-{
-  int listenfd, connfd;
-  char hostname[MAXLINE], port[MAXLINE];
-  socklen_t clientlen;
-  struct sockaddr_storage clientaddr;
-
-  /* Check command line args */
-  if (argc != 2) {
-    fprintf(stderr, "usage: %s <port>\n", argv[0]);
-    fprintf(stderr, "use default port 5000\n");
-    listenfd = Open_listenfd("5000");
-  } else {
-    listenfd = Open_listenfd(argv[1]);
-  }
-
-  while (1) {
-    clientlen = sizeof(clientaddr);
-    connfd = Accept(listenfd, (SA *)&clientaddr, &clientlen); //line:netp:tiny:accept
-    Getnameinfo((SA *) &clientaddr, clientlen, hostname, MAXLINE,
-        port, MAXLINE, 0);
-    printf("Accepted connection from (%s, %s)\n", hostname, port);
-    doit(connfd);                                             //line:netp:tiny:doit
-    Close(connfd);                                            //line:netp:tiny:close
-  }
-}
+    char *shortmsg, char *longmsg);*/
 
 /*
  * doit - handle one HTTP request/response transaction

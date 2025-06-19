@@ -1,5 +1,6 @@
-#include "csapp.h"
+#include "../csapp.h"
 #include "sbuf.h"
+#include "tiny.h"
 
 /* Create an empty, bounded, shared FIFO buffer with n slots */
 void sbuf_init(sbuf_t *sp, int n) {
@@ -38,12 +39,16 @@ int sbuf_remove(sbuf_t *sp) {
 
 /* When rear == front ⇒ buffer is empty */
 int sbuf_empty(sbuf_t *sp) {
+    P(&sp->mutex);
     if (sp->front == sp->rear)
         return 1;
+    V(&sp->mutex);
 }
 
 /* When rear + 1 % n == front ⇒ buffer is full */
 int sbuf_full(sbuf_t *sp) {
+    P(&sp->mutex);
     if (((sp->rear+1) % (sp->n)) == sp->front)
         return 1;
+    V(&sp->mutex);
 }
