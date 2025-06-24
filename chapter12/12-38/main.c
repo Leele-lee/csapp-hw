@@ -68,7 +68,6 @@ void scale_pool(int newcount) {
             V_m(&tids[i].metux);
         }
     }
-    //printf("Old thread_count in scale_pool is: %d\n new is: %d\n", thread_count, newcount); fflush(stdout);
     thread_count = newcount;
     
     V_m(&pool_metux);
@@ -80,17 +79,13 @@ void scale_pool(int newcount) {
  * when the buffer is empty, havle the number of threads
  */
 void *monitor(void *vargp) {
-    printf("I am in monitor\n"); fflush(stdout);
     while (1) {
         Sleep(1);
         if (sbuf_full(&sbuf)) {
-            //printf("TEST: Monitor find sbuf is full\n"); fflush(stdout);
             scale_pool(2 * thread_count);
         } else if (sbuf_empty(&sbuf)) {
-            //printf("TEST: Mointor find sbuf is empty\n"); fflush(stdout);
             scale_pool(thread_count / 2);
         }
-        //printf("TEST: Sorry minitor didn't find anything\n"); fflush(stdout);
     }
 }
 
@@ -115,7 +110,6 @@ int main(int argc, char **argv) {
     
     pthread_t monitor_tid;
     Pthread_create(&monitor_tid, NULL, monitor, NULL);
-    //printf("after step into monitor in main\n");
 
     while(1) {
         clientlen = sizeof(struct sockaddr_storage);
@@ -124,7 +118,5 @@ int main(int argc, char **argv) {
         port, MAXLINE, 0);
         printf("Accepted connection from (%s, %s)\n", hostname, port);
         sbuf_insert(&sbuf, connfd);
-        //printf("Accepted new connection: %d\n", connfd);
-        fflush(stdout);
     }
 }

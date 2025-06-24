@@ -21,9 +21,7 @@ void sbuf_deinit(sbuf_t *sp) {
 /* Insert item onto the rear of shared buffer sp */
 void sbuf_insert(sbuf_t *sp, int item) {
     P_m(&sp->slots);         // wait for avaliable slot, use a slot
-    //printf("Inserting into buffer: %d\n", item); fflush(stdout);
     P_m(&sp->mutex);         // lock the buf
-    //printf("Inserting into buffer: %d\n", item); fflush(stdout);
     sp->buf[(++sp->rear) % (sp->n)] = item;
     V_m(&sp->mutex);         // unlock the buf
     V_m(&sp->items);         // announce avaliable item, add a item
@@ -35,7 +33,6 @@ int sbuf_remove(sbuf_t *sp) {
     P_m(&sp->items);
     P_m(&sp->mutex);
     item = sp->buf[(++sp->front) % (sp->n)];
-    //printf("Remove from buffer: %d\n", item); fflush(stdout);
     V_m(&sp->mutex);
     V_m(&sp->slots);
     return item;

@@ -26,7 +26,6 @@ void doit(int fd)
   char filename[MAXLINE], cgiargs[MAXLINE];
   rio_t rio;
 
-  //printf("Handling request on fd %d\n", fd); fflush(stdout);
   /* Read request line and headers */
   Rio_readinitb(&rio, fd);
   if (!Rio_readlineb(&rio, buf, MAXLINE)) {  //line:netp:doit:readrequest
