@@ -4,6 +4,7 @@
  */
 #include "../csapp.h"
 #include "tiny.h"
+#include "semaphore.h"
 
 /*void doit(int fd);
 void read_requesthdrs(rio_t *rp);
@@ -25,10 +26,14 @@ void doit(int fd)
   char filename[MAXLINE], cgiargs[MAXLINE];
   rio_t rio;
 
+  printf("Handling request on fd %d\n", fd); fflush(stdout);
   /* Read request line and headers */
   Rio_readinitb(&rio, fd);
-  if (!Rio_readlineb(&rio, buf, MAXLINE))  //line:netp:doit:readrequest
+  if (!Rio_readlineb(&rio, buf, MAXLINE)) {  //line:netp:doit:readrequest
+    printf("[doit] No data received\n");
     return;
+  } 
+    
   printf("%s", buf);
   sscanf(buf, "%s %s %s", method, uri, version);       //line:netp:doit:parserequest
   if (strcasecmp(method, "GET")) {                     //line:netp:doit:beginrequesterr
