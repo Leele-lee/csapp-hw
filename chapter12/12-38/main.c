@@ -32,11 +32,11 @@ void *worker(void *vargp) {
     //printf("[DEBUG] Worker thread %ld running\n", (long)pthread_self());
     // every thread must keep waiting for the next descriptor
     while (1) {
-        printf("I am in worker, I am waiting\n"); fflush(stdout);
+        //printf("I am in worker, I am waiting at index %d\n", i); fflush(stdout);
         int connfd = sbuf_remove(&sbuf);  // the thread not actually work until sbuf_remove be returned
         // before worker need to lock tids[i]
         P_m(&tids[i].metux);      // the thread is using
-        doit(connfd);    
+        doit(connfd);
         Close(connfd);
         V_m(&tids[i].metux);      // free the thread
     }
@@ -68,7 +68,7 @@ void scale_pool(int newcount) {
             V_m(&tids[i].metux);
         }
     }
-    printf("Old thread_count in scale_pool is: %d\n new is: %d\n", thread_count, newcount); fflush(stdout);
+    //printf("Old thread_count in scale_pool is: %d\n new is: %d\n", thread_count, newcount); fflush(stdout);
     thread_count = newcount;
     
     V_m(&pool_metux);
@@ -84,13 +84,13 @@ void *monitor(void *vargp) {
     while (1) {
         Sleep(1);
         if (sbuf_full(&sbuf)) {
-            printf("TEST: Monitor find sbuf is full\n"); fflush(stdout);
+            //printf("TEST: Monitor find sbuf is full\n"); fflush(stdout);
             scale_pool(2 * thread_count);
         } else if (sbuf_empty(&sbuf)) {
-            printf("TEST: Mointor find sbuf is empty\n"); fflush(stdout);
+            //printf("TEST: Mointor find sbuf is empty\n"); fflush(stdout);
             scale_pool(thread_count / 2);
         }
-        printf("TEST: Sorry minitor didn't find anything\n"); fflush(stdout);
+        //printf("TEST: Sorry minitor didn't find anything\n"); fflush(stdout);
     }
 }
 
@@ -124,7 +124,7 @@ int main(int argc, char **argv) {
         port, MAXLINE, 0);
         printf("Accepted connection from (%s, %s)\n", hostname, port);
         sbuf_insert(&sbuf, connfd);
-        printf("Accepted new connection: %d\n", connfd);
+        //printf("Accepted new connection: %d\n", connfd);
         fflush(stdout);
     }
 }
