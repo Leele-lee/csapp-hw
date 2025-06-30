@@ -17,7 +17,7 @@
  * if uri is relative path "/path/to/resource", wrong format, return -1.
  * 
  * parse the full path uri http://example.com/index.html
- or http://example.com:8080/index.html to get: 
+ * or http://example.com:8080/index.html to get: 
  * 1. hostname (e.g. www.google.com)
  * 2. port (default: 80)
  * 3. path (/index.html)
@@ -66,6 +66,17 @@ int is_blocked(const char *uri) {
     return 0;
 }
 
+void log_request(const char *uri) {
+    FILE *log = fopen(LOG_FILE, "a");
+    if (log) {
+        time_t now = time(NULL);
+        fprintf(log, "%s %s\n", ctime(&now), uri);
+        fclose(log);
+    } else {
+        fprintf(stderr, "The log file can not be open\n");
+    }
+}
+
 /*
  * 1. Read request line using Rio_readlineb
  * and extract method, uri, and version from it.
@@ -74,12 +85,12 @@ int is_blocked(const char *uri) {
  * 4. logging the uri toa proxy.log file
  */
 void handle_request(int connfd) {
-    rio_t rio;
+    rio_t client_rio, server_rio;
     char buf[MAXLINE], method[MAXLINE], uri[MAXLINE], version[MAXLINE];
 
-    Rio_readinitb(&rio, connfd);
+    Rio_readinitb(&server_rio, connfd);
     // read request line and header
-    if (!Rio_readlineb(&rio, buf, MAXLINE)) {
+    if (!Rio_readlineb(&server_rio, buf, MAXLINE)) {
         Close(connfd);
         return;
     }
@@ -107,7 +118,41 @@ void handle_request(int connfd) {
         return;
     }
 
+    // forward request to server
+    int clientfd = Open_clientfd(host, port);
+    if (clientfd < 0) {
+        Close(connfd);
+        return;
+    } 
 
+    // send request line to the server
+    sprintf(buf, "%s %s %s\r\n", method, path, version);
+    Rio_writen(clientfd, buf, strlen(buf));
+
+    //forward request headers to the server
+    while (Rio_readlineb(&server_rio, buf, MAXLINE) > 0) {
+        if (strcmp(buf, "\r\n")) break;
+        if (strncasecmp(buf, "Connection:", 11) == 0 ||
+            strncasecmp(buf, "Proxy-connection:", 17) == 0 ||
+            strncasecmp(buf, "Keep-Alive:", 11) == 0) {
+                continue;
+        }
+        Rio_writen(clientfd, buf, strlen(buf));
+    }
+
+    //add our own connection headers
+    sprintf(buf, "Connection: close\r\nProxy-Connection: close\r\n\r\n");
+    Rio_writen(clientfd, buf, strlen(buf));
+
+    // read response from server and forward it back to the browser
+    Rio_readinitb(&client_rio, clientfd);
+    ssize_t n;
+    while (n = Rio_readlineb(&client_rio, buf, MAXLINE) > 0) {
+        Rio_writen(connfd, buf, n);
+    }
+    Close(clientfd);
+    log_request(uri);
+    Close(connfd);
 }
 
 int mian(int argc, char **argv) {
