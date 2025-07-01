@@ -57,7 +57,7 @@ int is_blocked(const char *uri) {
     if (!fp) return 0;
     char line[MAXBUF];
     while (fgets(line, MAXBUF, fp)) {
-        if (strstr(uri, strok(line, "\n "))) {
+        if (strstr(uri, strtok(line, "\n "))) {
             fclose(fp);
             return 1;
         }
@@ -113,13 +113,15 @@ void handle_request(int connfd) {
     // check block list
     if (is_blocked(uri)) {
         char *err = "HTTP/1.0 403 Forbidden\r\n\r\nBlocked by proxy\n";
-        Rio_written(connfd, err, strlen(err));
+        Rio_writen(connfd, err, strlen(err));
         Close(connfd);
         return;
     }
 
     // forward request to server
-    int clientfd = Open_clientfd(host, port);
+    char port_char[10];
+    sprintf(port_char, "%d", port);
+    int clientfd = Open_clientfd(host, port_char);
     if (clientfd < 0) {
         Close(connfd);
         return;
@@ -147,7 +149,7 @@ void handle_request(int connfd) {
     // read response from server and forward it back to the browser
     Rio_readinitb(&client_rio, clientfd);
     ssize_t n;
-    while (n = Rio_readlineb(&client_rio, buf, MAXLINE) > 0) {
+    while ((n = Rio_readlineb(&client_rio, buf, MAXLINE)) > 0) {
         Rio_writen(connfd, buf, n);
     }
     Close(clientfd);
@@ -155,7 +157,7 @@ void handle_request(int connfd) {
     Close(connfd);
 }
 
-int mian(int argc, char **argv) {
+int main(int argc, char **argv) {
     int listenfd, connfd;
     socklen_t clientlen;
     struct sockaddr_storage clientaddr;
