@@ -10,6 +10,8 @@
 #define FILTER_FILE "block.txt"
 #define LOG_FILE "proxy.log"
 
+void *thread(void *vargp);
+
 /* 
  * if uri is full absolute path "http://abc.com/path" that is okay to return 1.
  * if uri is absolute path "abc.com/path" but don't have scheme "http://"
@@ -117,8 +119,8 @@ void handle_request(int connfd) {
         Close(connfd);
         return;
     }
-
     log_request(uri);
+
 
     // forward request to server
     char port_char[10];
@@ -155,13 +157,15 @@ void handle_request(int connfd) {
         Rio_writen(connfd, buf, n);
     }
     Close(clientfd);
+
     Close(connfd);
 }
 
 int main(int argc, char **argv) {
-    int listenfd, connfd;
+    int listenfd, *connfdp;
     socklen_t clientlen;
     struct sockaddr_storage clientaddr;
+    pthread_t tid;
 
     if (argc != 2) {
         fprintf(stderr, "Usage: %s <port>\n", argv[0]);
@@ -173,7 +177,17 @@ int main(int argc, char **argv) {
 
     while (1) {
         clientlen = sizeof(clientaddr);
-        connfd = Accept(listenfd, (SA*)&clientaddr, &clientlen);
-        handle_request(connfd);
+        connfdp = Malloc(sizeof(int)); 
+        *connfdp = Accept(listenfd, (SA*)&clientaddr, &clientlen);
+        Pthread_create(&tid, NULL, thread, connfdp);
     }
+}
+
+void *thread(void *vargp) {
+    int connfd = *((int *)vargp);
+    Pthread_detach(pthread_self());
+    Free(vargp);
+    handle_request(connfd);
+    //Close(connfd);
+    return NULL;
 }
