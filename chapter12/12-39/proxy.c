@@ -135,7 +135,7 @@ void handle_request(int connfd) {
 
     //forward request headers to the server
     while (Rio_readlineb(&server_rio, buf, MAXLINE) > 0) {
-        if (strcmp(buf, "\r\n")) break;
+        if (strcmp(buf, "\r\n") == 0) break;
         if (strncasecmp(buf, "Connection:", 11) == 0 ||
             strncasecmp(buf, "Proxy-connection:", 17) == 0 ||
             strncasecmp(buf, "Keep-Alive:", 11) == 0) {

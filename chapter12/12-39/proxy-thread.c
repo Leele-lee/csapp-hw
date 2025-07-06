@@ -12,6 +12,8 @@
 
 void *thread(void *vargp);
 
+pthread_mutex_t log_mutex = PTHREAD_MUTEX_INITIALIZER;
+
 /* 
  * if uri is full absolute path "http://abc.com/path" that is okay to return 1.
  * if uri is absolute path "abc.com/path" but don't have scheme "http://"
@@ -69,6 +71,8 @@ int is_blocked(const char *uri) {
 }
 
 void log_request(const char *uri) {
+    pthread_mutex_lock(&log_mutex);
+
     FILE *log = fopen(LOG_FILE, "a");
     if (log) {
         time_t now = time(NULL);
@@ -77,6 +81,8 @@ void log_request(const char *uri) {
     } else {
         fprintf(stderr, "The log file can not be open\n");
     }
+
+    pthread_mutex_unlock(&log_mutex);
 }
 
 /*
@@ -86,9 +92,11 @@ void log_request(const char *uri) {
  * 3. sent relative path format request line and headers to the server
  * 4. logging the uri toa proxy.log file
  */
-void handle_request(int connfd) {
+void handle_request(int connfd, pthread_t tid) {
     rio_t client_rio, server_rio;
     char buf[MAXLINE], method[MAXLINE], uri[MAXLINE], version[MAXLINE];
+
+    printf("Handling connection in thread %ld\n", (long)pthread_self());
 
     Rio_readinitb(&server_rio, connfd);
     // read request line and header
@@ -105,10 +113,12 @@ void handle_request(int connfd) {
     if (parse == 0) {
         fprintf(stderr, "This request's uri has not scheme 'http://'\n");
         Close(connfd);
+        fprintf(stderr, "Malformed URI: %s\n", uri);
         return;
     } else if (parse == -1) {
         fprintf(stderr, "This request'uri is a relative path, it should be full path\n");
         Close(connfd);
+        fprintf(stderr, "Malformed URI: %s\n", uri);
         return;
     }
 
@@ -117,6 +127,7 @@ void handle_request(int connfd) {
         char *err = "HTTP/1.0 403 Forbidden\r\n\r\nBlocked by proxy\n";
         Rio_writen(connfd, err, strlen(err));
         Close(connfd);
+        fprintf(stderr, "Blocked URI: %s\n", uri);
         return;
     }
     log_request(uri);
@@ -127,39 +138,47 @@ void handle_request(int connfd) {
     sprintf(port_char, "%d", port);
     int clientfd = Open_clientfd(host, port_char);
     if (clientfd < 0) {
-        Close(connfd);
+        Close(connfd); 
         return;
     } 
 
     // send request line to the server
     sprintf(buf, "%s %s %s\r\n", method, path, version);
     Rio_writen(clientfd, buf, strlen(buf));
+    printf("tid %ld: %s", tid, buf); fflush(stdout);
 
+    ssize_t n;
     //forward request headers to the server
-    while (Rio_readlineb(&server_rio, buf, MAXLINE) > 0) {
-        if (strcmp(buf, "\r\n")) break;
+    while ((n = Rio_readlineb(&server_rio, buf, MAXLINE)) != 0) {
+        if (strcmp(buf, "\r\n") == 0) break;
         if (strncasecmp(buf, "Connection:", 11) == 0 ||
             strncasecmp(buf, "Proxy-connection:", 17) == 0 ||
             strncasecmp(buf, "Keep-Alive:", 11) == 0) {
                 continue;
         }
-        Rio_writen(clientfd, buf, strlen(buf));
+        Rio_writen(clientfd, buf, n);
+        printf("forward request headers to the server. tid %ld: %s", tid, buf); fflush(stdout);
     }
 
     //add our own connection headers
     sprintf(buf, "Connection: close\r\nProxy-Connection: close\r\n\r\n");
     Rio_writen(clientfd, buf, strlen(buf));
+    printf("add our own connection headers. tid %ld: %s", tid, buf); fflush(stdout);
+
 
     // read response from server and forward it back to the browser
     Rio_readinitb(&client_rio, clientfd);
-    ssize_t n;
-    while ((n = Rio_readnb(&client_rio, buf, MAXLINE)) > 0) {
+    
+    printf("1. before read response from server and forward. tid %ld\n", tid); fflush(stdout);
+    while ((n = Rio_readnb(&client_rio, buf, MAXLINE)) != 0) {
+        printf("2. read response from server and forward it back to the browser. tid %ld: %s", tid, buf); fflush(stdout);
         Rio_writen(connfd, buf, n);
     }
-    Close(clientfd);
 
+    Close(clientfd);
     Close(connfd);
 }
+
 
 int main(int argc, char **argv) {
     int listenfd, *connfdp;
@@ -167,6 +186,7 @@ int main(int argc, char **argv) {
     struct sockaddr_storage clientaddr;
     pthread_t tid;
 
+    //signal(SIGPIPE, SIG_IGN);
     if (argc != 2) {
         fprintf(stderr, "Usage: %s <port>\n", argv[0]);
         fprintf(stderr, "use default port 5050\n");
@@ -181,13 +201,17 @@ int main(int argc, char **argv) {
         *connfdp = Accept(listenfd, (SA*)&clientaddr, &clientlen);
         Pthread_create(&tid, NULL, thread, connfdp);
     }
+    
 }
 
 void *thread(void *vargp) {
-    int connfd = *((int *)vargp);
+    printf("[Thread %ld] Started\n", (long)pthread_self()); fflush(stdout);
     Pthread_detach(pthread_self());
+    pthread_t tid = pthread_self();
+    int connfd = *((int *)vargp);
     Free(vargp);
-    handle_request(connfd);
+    handle_request(connfd, tid);
     //Close(connfd);
+    printf("[Thread %ld] Finished\n", (long)pthread_self()); fflush(stdout);
     return NULL;
 }
