@@ -11,7 +11,6 @@
 #define LOG_FILE "proxy.log"
 
 void *thread(void *vargp);
-
 pthread_mutex_t log_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 /* 
