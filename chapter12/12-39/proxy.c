@@ -163,6 +163,7 @@ int main(int argc, char **argv) {
     socklen_t clientlen;
     struct sockaddr_storage clientaddr;
 
+    Signal(SIGPIPE, SIG_IGN);
     if (argc != 2) {
         fprintf(stderr, "Usage: %s <port>\n", argv[0]);
         fprintf(stderr, "use default port 5050\n");
